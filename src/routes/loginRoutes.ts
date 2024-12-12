@@ -3,9 +3,9 @@ const router = Router();
 
 // User interface definition
 interface User {
-    name: string;
-    email: string;
-    password: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
 // Array to store users
@@ -13,37 +13,54 @@ const Users: User[] = [];
 
 // sign up functionality middleware
 function signupMiddleware(req: Request, res: Response, next: NextFunction) {
-    const { name, email, password } = req.body;
+  const { name, email, password } = req.body;
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-    if (name && email && password) {
-        const newUser: User = { name, email, password };
-        Users.push(newUser); 
-        console.log("User added:", newUser); 
-        next(); // Proceed to next route handler
-    } else {
-        res.status(400).send("All fields (name, email, and password) are required.");
-    }
+  if (!name) {
+    res.status(400).send("Name is required.");
+  }
+  if (!email) {
+    res.status(400).send("Email is required.");
+  } else if (!regex.test(email)) {
+    res.status(400).send("Invalid email format.");
+  }
+  if (!password) {
+    res.status(400).send("Password is required.");
+  } else if (!passwordRegex.test(password)) {
+    res
+      .status(400)
+      .send(
+        "Password must be at least 8 characters long, contain one uppercase letter, one number, and one special character."
+      );
+  }
+
+  // If all fields are valid
+  const newUser = { name, email, password };
+
+  console.log("User added:", newUser);
+  console.log(" total users now :", Users);
+  next(); // Proceed to the next middleware or route handler
 }
 
 // Middleware to protect routes that require authentication
 function RequireAuth(req: Request, res: Response, next: NextFunction) {
-    if (req.session && req.session.loggedIn) {
-        next();
-        return;
-    }
-    res.status(403).send("You are not authorised to view this, please log in");
+  if (req.session && req.session.loggedIn) {
+    next();
+    return;
+  }
+  res.redirect("/login");
 }
 
-router.get('/', (req: Request, res: Response) => {
-    if (req.session && req.session.loggedIn) {
-        res.send(`<div><p>HOME PAGE</p><a href="/logout">Log Out</a></div>`);
-    } else {
-        res.redirect("/login");
-    }
+router.get("/", RequireAuth, (req: Request, res: Response) => {
+  res.send(
+    `<div><p>HOME PAGE. Thanks for logging in</p><a href="/logout">Log Out</a></div>`
+  );
 });
 
-router.get('/login', (req: Request, res: Response) => {
-    res.send(`
+router.get("/login", (req: Request, res: Response) => {
+  res.send(`
         <p>Login Page</p>
         <form method="POST">
             <div>
@@ -57,30 +74,31 @@ router.get('/login', (req: Request, res: Response) => {
             <div>
                 <button type="submit">Login</button>
             </div>
-        </form>`);
+        </form>
+        <a href="/signup">Dont have an account? Sign up</a>`);
 });
 
 // Login handler
 router.post("/login", (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    const user = Users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-        req.session = { loggedIn: true }; // Mark user as logged in
-        res.redirect("/"); // Redirect to homepage
-    } else {
-        res.status(401).send("Invalid credentials");
-    }
+  const { email, password } = req.body;
+  const user = Users.find((u) => u.email === email && u.password === password);
+
+  if (user) {
+    req.session = { loggedIn: true };
+    res.redirect("/");
+  } else {
+    res.status(401).send("Invalid credentials");
+  }
 });
 
 // Logout handler
 router.get("/logout", (req: Request, res: Response) => {
-    req.session = undefined; // Clear session to log out
-    res.redirect("/login"); // Redirect to login page
+  req.session = undefined;
+  res.redirect("/login");
 });
 
 router.get("/signup", (req: Request, res: Response) => {
-    res.send(`
+  res.send(`
         <h1>Sign Up</h1>
         <form method="POST">
             <div>
@@ -103,8 +121,7 @@ router.get("/signup", (req: Request, res: Response) => {
 
 // POST handler for signup
 router.post("/signup", signupMiddleware, (req: Request, res: Response) => {
-    
-    res.send(`
+  res.send(`
         <div>
             <p>You may now log in with the credentials you used to sign up</p>
             <a href="/login">Log In</a>
@@ -113,7 +130,7 @@ router.post("/signup", signupMiddleware, (req: Request, res: Response) => {
 
 // Protected route
 router.get("/protect", RequireAuth, (req: Request, res: Response) => {
-    res.send("Welcome to the protected route, logged-in user");
+  res.send("Welcome to the protected route, logged-in user");
 });
 
 export { router };
