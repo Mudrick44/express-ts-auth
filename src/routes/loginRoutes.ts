@@ -36,7 +36,6 @@ function signupMiddleware(req: Request, res: Response, next: NextFunction) {
       );
   }
 
-  // If all fields are valid
   const newUser = { name, email, password };
 
   console.log("User added:", newUser);
